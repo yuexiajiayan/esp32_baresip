@@ -1,0 +1,38 @@
+name: Android
+
+on:
+  push:
+    branches:
+    - main
+  pull_request:
+    branches:
+    - main
+
+env:
+  openssl: 3.2.1
+
+jobs:
+  android:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - uses: actions/cache@v4
+      id: openssl
+      with:
+        path: openssl
+        key: ${{ runner.os }}-android-openssl-${{ env.openssl }}
+
+    - name: "build openssl"
+      if: steps.openssl.outputs.cache-hit != 'true'
+      run: |
+        wget -q https://www.openssl.org/source/openssl-$openssl.tar.gz
+        tar -xzf openssl-$openssl.tar.gz
+        mv openssl-$openssl openssl
+        cd openssl && ANDROID_NDK_ROOT=$ANDROID_NDK_LATEST_HOME PATH=$ANDROID_NDK_LATEST_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin:$PATH ./Configure android-arm64 no-shared no-tests -U__ANDROID_API__ -D__ANDROID_API__=21 && PATH=$ANDROID_NDK_LATEST_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin:$PATH make build_libs && cd ..
+
+    - name: build
+      run: |
+        cmake -DCMAKE_TOOLCHAIN_FILE=$ANDROID_NDK_LATEST_HOME/build/cmake/android.toolchain.cmake -DANDROID_ABI="arm64-v8a" -DANDROID_PLATFORM=android-21 -DOPENSSL_ROOT_DIR=openssl -DOPENSSL_INCLUDE_DIR=openssl/include -DOPENSSL_CRYPTO_LIBRARY=openssl/libcrypto.a -DOPENSSL_SSL_LIBRARY=openssl/libssl.a .
+        cmake --build . -j 4 -t retest
