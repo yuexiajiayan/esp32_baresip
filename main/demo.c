@@ -624,7 +624,8 @@ void* taskB(void * param){
   
 void   app_main(void)
 {
-  
+  //init wifi
+	//.....
    //xTaskCreatePinnedToCore(taskB,"taskB",1024*6,(void*)xPageQueue,3,NULL,1);
 
 
